@@ -563,6 +563,8 @@
         <span class="hint">Клик по абзацу → перевод ↓</span>
         <span class="muted">|</span>
         <span class="muted">Кешируется локально</span>
+        <span class="muted">|</span>
+        <a href="javascript:" class="force-translate muted">Translate</a>
       `;
 
                         const translation = document.createElement("div");
@@ -588,9 +590,16 @@
                         wrap.addEventListener(
                             "click",
                             async (ev) => {
-                                // Allow clicking links inside
-                                if (ev.target.closest("a")) return;
-                                await onTranslateClick(wrap, html, idx);
+                                if (ev.target.closest("a.force-translate")) {
+                                    await onTranslateClick(wrap, html, idx);
+                                    return;
+                                }
+                                if (
+                                    ev.target.closest(".original") &&
+                                    translation.classList.contains("hidden") // click on the original works only once
+                                ) {
+                                    await onTranslateClick(wrap, html, idx);
+                                }
                             },
                             false,
                         );
@@ -623,7 +632,6 @@
                             getLastPosKey(state.fileHash),
                             String(idx),
                         );
-                        //return;
                     }
 
                     // strip HTML to plain text for LLM
