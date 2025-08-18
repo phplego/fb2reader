@@ -468,6 +468,14 @@
                     return paras;
                 }
 
+                function fb2ExtractTitle(doc) {
+                    // Try <book-title> from description, or first title paragraph
+                    const bt = doc.getElementsByTagName("book-title")[0];
+                    if (bt && bt.textContent) return bt.textContent.trim();
+                    const titleP = doc.querySelector("title p");
+                    return titleP ? titleP.textContent.trim() : "Untitled";
+                }
+
                 function sanitizeInline(node) {
                     // Recursively convert allowed FB2 inline tags to HTML string
                     const ALLOWED = {
@@ -522,7 +530,12 @@
                 }
 
                 // ==== Rendering ====
-                function renderParagraphs(paras, fileHash, fileName) {
+                function renderParagraphs(
+                    paras,
+                    fileHash,
+                    fileName,
+                    bookTitle,
+                ) {
                     state.totalParas = paras.length;
                     els.out.innerHTML = "";
                     els.meta.classList.remove("hidden");
@@ -533,11 +546,10 @@
                     );
 
                     els.meta.innerHTML = `
-      <span class="badge">Файл: ${escapeHtml(fileName)}</span>
-      <span class="badge">Параграфов: ${paras.length}</span>
-      <span class="badge">Язык перевода: ${els.lang.value}</span>
-      <span class="badge">Модель: ${escapeHtml(els.model.value)}</span>
-      ${lastPos ? `<span class="badge">Последний №: ${lastPos}</span>` : ""}
+      <span class="badge">File: ${escapeHtml(fileName)}</span>
+      <span class="badge">Title: ${escapeHtml(bookTitle)}</span>
+      <span class="badge">Paragraphs: ${paras.length}</span>
+      ${lastPos ? `<span class="badge">Last #: ${lastPos}</span>` : ""}
     `;
 
                     paras.forEach((pNode, i) => {
@@ -760,12 +772,21 @@
                         );
                         return;
                     }
+
+                    // extract book title
+                    bookTitle = fb2ExtractTitle(xml);
+
                     const paras = fb2ToParagraphNodes(xml);
                     if (!paras.length) {
                         alert("В файле не найдено параграфов <p>.");
                         return;
                     }
-                    renderParagraphs(paras, state.fileHash, state.fileName);
+                    renderParagraphs(
+                        paras,
+                        state.fileHash,
+                        state.fileName,
+                        bookTitle,
+                    );
                 });
 
                 // goto paragraph
