@@ -317,23 +317,18 @@
                 </label>
 
                 <button id="setKeyBtn" class="blue">🔑 Ключ OpenRouter</button>
-                <div class="spacer"></div>
 
                 <div class="jump">
                     <input
                         id="gotoInput"
                         type="text"
-                        placeholder="Перейти к # параграфа…"
-                        size="18"
+                        placeholder="#para"
+                        size="6"
                     />
-                    <button id="gotoBtn">Перейти</button>
-                    <button
-                        id="toggleUntranslatedBtn"
-                        title="Показать только непереведённые"
-                    >
-                        Фильтр: непереведённые
-                    </button>
+                    <button id="gotoBtn">Go</button>
+                    <button id="gotoLastBtn">↓ Last</button>
                 </div>
+                <div class="spacer"></div>
             </div>
         </header>
 
@@ -397,9 +392,7 @@
                     closeKeyBtn: document.getElementById("closeKeyBtn"),
                     gotoInput: document.getElementById("gotoInput"),
                     gotoBtn: document.getElementById("gotoBtn"),
-                    toggleUntranslatedBtn: document.getElementById(
-                        "toggleUntranslatedBtn",
-                    ),
+                    gotoLastBtn: document.getElementById("gotoLastBtn"),
                 };
 
                 let state = {
@@ -555,7 +548,7 @@
       <span class="badge">File: ${escapeHtml(fileName)}</span>
       <span class="badge">Title: ${escapeHtml(bookTitle)}</span>
       <span class="badge">Paragraphs: ${paras.length}</span>
-      ${lastPos ? `<span class="badge">Last #: ${lastPos}</span>` : ""}
+      ${lastPos ? `<span class="badge">Last #${lastPos}</span>` : ""}
     `;
 
                     paras.forEach((pNode, i) => {
@@ -715,9 +708,6 @@
                             getLastPosKey(state.fileHash),
                             String(idx),
                         );
-
-                        // Optional: hide if filtered
-                        applyUntranslatedFilter();
                     } catch (err) {
                         transEl.innerHTML = `<span style="color:var(--danger)">❗ ${escapeHtml(err.message || String(err))}</span>`;
                     } finally {
@@ -801,8 +791,13 @@
                     if (ev.key === "Enter") gotoPara();
                 });
 
-                function gotoPara() {
-                    const v = parseInt(els.gotoInput.value.trim(), 10);
+                function gotoPara(num = null) {
+                    let v = 0;
+                    if (num != null) {
+                        v = num;
+                    } else {
+                        v = parseInt(els.gotoInput.value.trim(), 10);
+                    }
                     if (!v || v < 1 || v > state.totalParas) return;
                     const el = document.getElementById(`p-${v}`);
                     if (el) {
@@ -815,35 +810,15 @@
                     }
                 }
 
-                // show only untranslated
-                els.toggleUntranslatedBtn.addEventListener("click", () => {
-                    state.showOnlyUntranslated = !state.showOnlyUntranslated;
-                    els.toggleUntranslatedBtn.textContent =
-                        state.showOnlyUntranslated
-                            ? "Показать все"
-                            : "Фильтр: непереведённые";
-                    applyUntranslatedFilter();
-                });
-
-                function applyUntranslatedFilter() {
-                    if (!state.fileHash) return;
-                    const lang = els.lang.value;
-                    const blocks = Array.from(
-                        document.querySelectorAll(".para"),
+                // goto last position button
+                els.gotoLastBtn.addEventListener("click", () => {
+                    const lastPos = parseInt(
+                        localStorage.getItem(getLastPosKey(state.fileHash)) ||
+                            "0",
+                        10,
                     );
-                    blocks.forEach((b) => {
-                        if (!state.showOnlyUntranslated) {
-                            b.classList.remove("hidden");
-                            return;
-                        }
-                        const idx = b.dataset.idx;
-                        const cached = localStorage.getItem(
-                            getTransKey(state.fileHash, lang, idx),
-                        );
-                        if (cached) b.classList.add("hidden");
-                        else b.classList.remove("hidden");
-                    });
-                }
+                    gotoPara(lastPos);
+                });
 
                 // helpers
                 function escapeHtml(s) {
