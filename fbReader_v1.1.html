@@ -378,6 +378,14 @@
 
         <script>
             (() => {
+                const DEBUG = true;
+                const orig_console_log = console.log;
+                console.log = function () {
+                    if (DEBUG) {
+                        orig_console_log(...arguments);
+                    }
+                }
+
                 const els = {
                     file: document.getElementById("fileInput"),
                     lang: document.getElementById("lang"),
@@ -399,8 +407,11 @@
                     apiKey: null,
                     fileHash: null,
                     fileName: null,
+                    bookTitle: null,
+                    bookAuthor: null,
                     totalParas: 0,
                 };
+
 
                 // ==== Local Storage helpers ====
                 const LS_KEY = "openrouter_api_key";
@@ -474,6 +485,12 @@
                     return titleP ? titleP.textContent.trim() : "Untitled";
                 }
 
+                function fb2ExtractAuthor(doc) {
+                    const author = doc.getElementsByTagName("author")[0];
+                    if (author && author.textContent) return author.textContent.trim();
+                    return "Unknown";
+                }
+
                 function sanitizeInline(node) {
                     // Recursively convert allowed FB2 inline tags to HTML string
                     const ALLOWED = {
@@ -529,23 +546,21 @@
 
                 // ==== Rendering ====
                 function renderParagraphs(
-                    paras,
-                    fileHash,
-                    fileName,
-                    bookTitle,
+                    paras
                 ) {
                     state.totalParas = paras.length;
                     els.out.innerHTML = "";
                     els.meta.classList.remove("hidden");
                     els.empty.classList.add("hidden");
                     const lastPos = parseInt(
-                        localStorage.getItem(getLastPosKey(fileHash)) || "0",
+                        localStorage.getItem(getLastPosKey(state.fileHash)) || "0",
                         10,
                     );
 
                     els.meta.innerHTML = `
-      <span class="badge">File: ${escapeHtml(fileName)}</span>
-      <span class="badge">Title: ${escapeHtml(bookTitle)}</span>
+      <span class="badge">File: ${escapeHtml(state.fileName)}</span>
+      <span class="badge">Title: ${escapeHtml(state.bookTitle)}</span>
+      <span class="badge">Author: ${escapeHtml(state.bookAuthor)}</span>
       <span class="badge">Paragraphs: ${paras.length}</span>
       ${lastPos ? `<span class="badge">Last #${lastPos}</span>` : ""}
     `;
@@ -589,7 +604,7 @@
 
                         // preload cached translation if exists
                         const cached = localStorage.getItem(
-                            getTransKey(fileHash, els.lang.value, idx),
+                            getTransKey(state.fileHash, els.lang.value, idx),
                         );
                         if (cached) {
                             translation.innerHTML = `${escapeHtml(cached)}`;
@@ -660,6 +675,18 @@
                         ).replace(/\/+$/, ""); // безопасно убираем хвостовые '/'
                         localStorage.setItem(LS_MODEL, model);
 
+                        const messages = [
+                            {
+                                role: "system",
+                                content: `You are a precise translation engine. Translate the user's paragraph into ${lang}.
+- It is the paragraph #${idx} from the book "${state.bookTitle}" written by "${state.bookAuthor}".
+- Preserve meaning, tone and simple inline emphasis when obvious.
+- Do NOT add commentary. Return ONLY the translation text.`,
+                            },
+                            { role: "user", content: originalText },
+                        ];
+                        console.log(messages[0].content);
+
                         const response = await fetch(
                             "https://openrouter.ai/api/v1/chat/completions",
                             {
@@ -668,19 +695,10 @@
                                     Authorization: `Bearer ${state.apiKey}`,
                                     "Content-Type": "application/json",
                                     "X-Title": "FB2 Paragraph Translator",
-                                    // 'Referer' устанавливается браузером автоматически (мы не можем задать вручную)
                                 },
                                 body: JSON.stringify({
                                     model,
-                                    messages: [
-                                        {
-                                            role: "system",
-                                            content: `You are a precise translation engine. Translate the user's paragraph into ${lang}.
-- Preserve meaning, tone and simple inline emphasis when obvious.
-- Do NOT add commentary. Return ONLY the translation text.`,
-                                        },
-                                        { role: "user", content: originalText },
-                                    ],
+                                    messages: messages,
                                     temperature: 0.7,
                                 }),
                             },
@@ -769,19 +787,15 @@
                     }
 
                     // extract book title
-                    bookTitle = fb2ExtractTitle(xml);
+                    state.bookTitle = fb2ExtractTitle(xml);
+                    state.bookAuthor = fb2ExtractAuthor(xml);
 
                     const paras = fb2ToParagraphNodes(xml);
                     if (!paras.length) {
                         alert("В файле не найдено параграфов <p>.");
                         return;
                     }
-                    renderParagraphs(
-                        paras,
-                        state.fileHash,
-                        state.fileName,
-                        bookTitle,
-                    );
+                    renderParagraphs(paras);
                 });
 
                 // goto paragraph
