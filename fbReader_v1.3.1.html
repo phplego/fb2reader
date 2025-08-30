@@ -323,11 +323,12 @@
         }
 
         // ==== Rendering ====
-        function renderParagraphs(paras){
+        async function renderParagraphs(paras){
           state.totalParas = paras.length;
           els.out.innerHTML = '';
+          els.empty.innerHTML = `<span class="spinner"></span> Rendering ${paras.length} paragraphs…`;
+          await new Promise(r => setTimeout(r, 10)); // Yield to UI
           els.meta.classList.remove('hidden');
-          els.empty.classList.add('hidden');
           const lastPos = parseInt(localStorage.getItem(getLastPosKey(state.fileHash))||'0',10);
 
           els.meta.innerHTML = `
@@ -386,6 +387,7 @@
           if (lastPos && document.getElementById(`p-${lastPos}`)){
             document.getElementById(`p-${lastPos}`).scrollIntoView({behavior:'smooth', block:'start'});
           }
+          els.empty.classList.add('hidden');
         }
 
         // ==== Translation ====
@@ -527,7 +529,7 @@
           state.bookAuthor = fb2ExtractAuthor(xml);
           const paras = fb2ToParagraphNodes(xml);
           if(!paras.length){ alert('No <p> paragraphs found in the file.'); return; }
-          renderParagraphs(paras);
+          await renderParagraphs(paras);
         });
 
         // Jump to paragraph
