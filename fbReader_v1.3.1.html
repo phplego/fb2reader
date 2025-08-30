@@ -79,6 +79,7 @@
       .linklike{ text-decoration:underline; cursor:pointer; color:#8ac8ff; }
       .mini{ font-size:.82rem; }
       .audio-holder{ display:flex; align-items:center; gap:.5rem; }
+      .audio-holder audio { height: 25px; }
     </style>
   </head>
   <body>
@@ -353,12 +354,12 @@
             actions.className = 'actions';
             actions.innerHTML = `
               <span class="hint">Click the paragraph → translation ↓</span>
-              <span class="muted">|</span>
+              <span class="muted">•</span>
               <span class="muted">Locally cached</span>
-              <span class="muted">|</span>
+              <span class="muted">•</span>
               <a href="javascript:" class="force-translate muted">Translate</a>
               <span class="muted">•</span>
-              <a href="javascript:" class="speak-loud muted">Speak Loud</a>
+              <a href="javascript:" class="speak-loud muted">🔊 TTS</a>
               <span class="audio-holder"></span>
             `;
 
