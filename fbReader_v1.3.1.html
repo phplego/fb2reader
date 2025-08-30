@@ -474,6 +474,7 @@
             if (existing) existing.remove();
             const audio = document.createElement('audio');
             audio.controls = true; audio.src = url;
+            audio.title = `tts ${state.bookTitle} p${idx}`;
             holder.innerHTML = '';
             holder.appendChild(audio);
             audio.play().catch(()=>{});
