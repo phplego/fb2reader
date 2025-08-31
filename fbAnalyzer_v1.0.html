@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FB2 Word Analyzer</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121821;
+      --muted: #7b8aa2;
+      --text: #e6eefc;
+      --accent: #6ea8fe;
+      --border: #223044;
+      --mark: #fff3bf;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.45;
+    }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      background: linear-gradient(180deg, rgba(18,24,33,.98), rgba(18,24,33,.92));
+      border-bottom: 1px solid var(--border);
+      padding: 14px 18px;
+      display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    }
+    header h1 {
+      margin: 0; font-size: 18px; letter-spacing: 0.3px; font-weight: 650;
+    }
+    header .sub { color: var(--muted); font-size: 13px; }
+
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    }
+    .chip { color: var(--muted); font-size: 12px; }
+
+    .field { display: grid; grid-template-columns: max-content 1fr; gap: 8px; align-items: center; }
+    .field label { color: var(--muted); font-size: 12px; }
+    .field input[type="number"], .field select {
+      background: #0f1621; color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; min-width: 90px; font-size: 13px;
+    }
+    .field input[type="file"] {
+      background: transparent; color: var(--text);
+    }
+    button, .btn {
+      background: #162133; color: var(--text); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; font-weight: 600; font-size: 13px; cursor: pointer;
+    }
+    button:hover { outline: 1px solid #294163; }
+
+    main { height: calc(100% - 70px); padding: 14px; }
+
+    .grid {
+      height: 100%;
+      display: grid; gap: 14px;
+      grid-template-columns: 1fr 1.6fr;
+    }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; height: auto; } }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex; flex-direction: column; min-height: 200px;
+      overflow: hidden;
+    }
+
+    .panel .head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .panel .head h2 { margin: 0; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+
+    .panel .body { padding: 12px; overflow: auto; flex: 1; }
+
+    .word-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+    .word-btn { width: 100%; text-align: left; background: #0f1621; border-radius: 0; border: none; border-bottom: 1px solid var(--border); padding: 4px 10px; display: grid; grid-template-columns: 1fr max-content; gap: 8px; align-items: center; }
+    .word-btn .w { font-variant-ligatures: none; }
+    .word-btn .c { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; }
+
+    .stats { display: flex; gap: 10px; flex-wrap: wrap; }
+    .stat { background: #0f1621; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+
+    .paragraphs { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .paragraph { background: #0f1621; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .paragraph .meta { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    mark { background: var(--mark); color: #2b2b2b; padding: 0 2px; border-radius: 3px; }
+
+    .filters { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; align-items: end; }
+    @media (max-width: 900px) { .filters { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+
+    .status { color: var(--muted); font-size: 12px; margin-left: 8px; }
+    .divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>FB2 Word Analyzer</h1>
+    <div class="sub">Upload an FB2 (FictionBook 2.0) file to analyze word frequencies and see contexts.</div>
+    <div class="spacer" style="flex:1"></div>
+    <div class="controls">
+      <div class="field">
+        <label for="file">FB2 file</label>
+        <input id="file" type="file" accept=".fb2,application/xml,text/xml" />
+      </div>
+      <span id="status" class="status">No file loaded.</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="panel" id="leftPanel">
+        <div class="head">
+          <h2>Words</h2>
+          <div class="stats" id="quickStats">
+            <div class="stat" id="statParas">Paragraphs: 0</div>
+            <div class="stat" id="statTokens">Tokens: 0</div>
+            <div class="stat" id="statUnique">Unique: 0</div>
+          </div>
+        </div>
+        <div class="body" style="display:flex; flex-direction: column; gap: 12px;">
+          <div class="filters">
+            <div class="field">
+              <label for="minCount">Min count</label>
+                <select id="minCount">
+                    <option selected>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                    <option>5</option>
+                    <option>10</option>
+                    <option>20</option>
+                    <option>50</option>
+                </select>
+            </div>
+            <div class="field">
+              <label for="maxCount">Max count</label>
+              <input id="maxCount" type="number" value="10" min="1" step="1" />
+            </div>
+            <div class="field">
+              <label for="limit">Limit (rows)</label>
+              <select id="limit">
+                  <option>10</option>
+                  <option selected>300</option>
+                  <option>1000</option>
+                  <option>9999</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sort">Sort</label>
+              <select id="sort">
+                <option value="asc">Rarest first (default)</option>
+                <option value="desc">Most frequent first</option>
+              </select>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <ul id="wordList" class="word-list"></ul>
+        </div>
+      </section>
+
+      <section class="panel" id="rightPanel">
+        <div class="head">
+          <h2 id="ctxTitle">Contexts</h2>
+          <div class="chip" id="ctxMeta">— pick a word from the list</div>
+        </div>
+        <div class="body">
+          <ol id="paragraphList" class="paragraphs"></ol>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // ==============================
+    // FB2 Word Analyzer (client-only)
+    // ==============================
+
+    // Global state containers
+    let paragraphs = [];           // Array of paragraph strings
+    let freqMap = null;            // Object mapping word -> total occurrences
+    let indexMap = null;           // Map mapping word -> array of paragraph indices
+    let sortedAsc = null;          // Array of [word, count] sorted ascending by count
+    let totals = { tokens: 0, unique: 0 };
+    let currentRunId = 0;          // Guard to ignore stale async results
+
+    // DOM shortcuts
+    const $ = (sel) => document.querySelector(sel);
+    const $file = $('#file');
+    const $status = $('#status');
+    const $wordList = $('#wordList');
+    const $paragraphList = $('#paragraphList');
+    const $ctxTitle = $('#ctxTitle');
+    const $ctxMeta = $('#ctxMeta');
+    const $statParas = $('#statParas');
+    const $statTokens = $('#statTokens');
+    const $statUnique = $('#statUnique');
+
+    const $minCount = $('#minCount');
+    const $maxCount = $('#maxCount');
+    const $limit = $('#limit');
+    const $sort = $('#sort');
+
+    // Tokenizer: matches words as sequences of Unicode letters/digits with optional apostrophes inside
+    // Example: "don't", "l'été", "тест", "слово1"
+    const WORD_RE = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
+
+    $file.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      currentRunId++;
+      const runId = currentRunId;
+      resetUI();
+      setStatus(`Reading “${file.name}”…`);
+      try {
+        // Read as ArrayBuffer to properly handle non-UTF8 encodings (e.g., windows-1251)
+        const buf = await file.arrayBuffer();
+        if (runId !== currentRunId) return; // Another file was chosen in the meantime
+        setStatus('Detecting encoding…');
+        const xmlText = decodeWithXmlDeclaredEncoding(buf);
+        if (runId !== currentRunId) return;
+
+        setStatus('Parsing XML…');
+        const xmlDoc = new DOMParser().parseFromString(xmlText, 'application/xml');
+        // Detect parser errors
+        if (xmlDoc.getElementsByTagName('parsererror').length) {
+          throw new Error('XML parsing failed. Is this a valid FB2 file?');
+        }
+
+        if (runId !== currentRunId) return;
+        setStatus('Extracting paragraphs…');
+        paragraphs = extractParagraphs(xmlDoc);
+        if (!paragraphs.length) throw new Error('No <p> paragraphs found inside <body>');
+        updateStats();
+
+        if (runId !== currentRunId) return;
+        setStatus('Indexing & counting words…');
+        ({ freqMap, indexMap, sortedAsc, totals } = buildIndexes(paragraphs));
+        updateStats();
+
+        // Initialize filters with sensible defaults based on the data
+        const counts = sortedAsc.map(([, c]) => c);
+        const max = counts[counts.length - 1] || 1;
+        $minCount.value = 1;
+        $maxCount.value = Math.min(10, max);
+        $limit.value = 300;
+        $sort.value = 'asc'; // rarest first by default
+
+        if (runId !== currentRunId) return;
+        setStatus('Rendering word list…');
+        renderWordList();
+        setStatus(`Ready — ${paragraphs.length} paragraphs, ${totals.tokens} tokens, ${totals.unique} unique words.`);
+      } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + (err?.message || err));
+      }
+    });
+
+    // Re-render list when filters change
+    for (const el of [$minCount, $maxCount, $limit, $sort]) {
+      el.addEventListener('change', () => renderWordList());
+      el.addEventListener('input', () => debounce(renderWordList, 120)());
+    }
+
+    // Word list click -> show contexts
+    $wordList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button.word-btn');
+      if (!btn) return;
+      const word = btn.dataset.word;
+      showContexts(word);
+    });
+
+    // ------------------------------
+    // Core: decoding & parsing
+    // ------------------------------
+
+    /**
+     * Decode ArrayBuffer into string honoring the XML prolog encoding if present.
+     * Falls back to UTF-8 if decoding fails.
+     */
+    function decodeWithXmlDeclaredEncoding(arrayBuffer) {
+      // Decode just the first 512 bytes with UTF-8 to read the prolog (ASCII-compatible)
+      let head = '';
+      try { head = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(arrayBuffer.slice(0, 512))); } catch {}
+      const m = /encoding=["']([^"']+)["']/i.exec(head);
+      const enc = (m ? m[1] : 'utf-8').toLowerCase();
+      try { return new TextDecoder(enc).decode(arrayBuffer); } catch {
+        // Fallback to UTF-8 if the declared encoding isn't supported
+        return new TextDecoder('utf-8').decode(arrayBuffer);
+      }
+    }
+
+    /**
+     * Extract text paragraphs from FB2 <body> using a TreeWalker over localName === 'p'.
+     */
+    function extractParagraphs(xmlDoc) {
+      const out = [];
+      const bodies = xmlDoc.getElementsByTagName('body');
+      for (const body of bodies) {
+        const walker = xmlDoc.createTreeWalker(body, NodeFilter.SHOW_ELEMENT, {
+          acceptNode(node) { return node.localName === 'p' ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP; }
+        });
+        let n;
+        while ((n = walker.nextNode())) {
+          const t = (n.textContent || '').replace(/\s+/g, ' ').trim();
+          if (t) out.push(t);
+        }
+      }
+      return out;
+    }
+
+    // ------------------------------
+    // Core: indexing & counting
+    // ------------------------------
+
+    /**
+     * Build frequency map and paragraph index.
+     * - freqMap: word -> total count across all paragraphs
+     * - indexMap: word -> array of paragraph indices where the word appears at least once
+     * - sortedAsc: [word, count][] sorted ascending by count (rarest first)
+     * - totals: { tokens, unique }
+     */
+    function buildIndexes(paragraphs) {
+      const freq = Object.create(null);
+      const index = new Map();
+      let tokenTotal = 0;
+
+      for (let i = 0; i < paragraphs.length; i++) {
+        const p = paragraphs[i];
+        // Collect unique words in this paragraph to avoid duplicate paragraph indices per word
+        const uniqueInPara = new Set();
+        const matches = p.matchAll(WORD_RE);
+        for (const m of matches) {
+          const raw = m[0];
+          const w = raw.toLowerCase();
+          // Count total tokens
+          tokenTotal++;
+          freq[w] = (freq[w] || 0) + 1;
+          uniqueInPara.add(w);
+        }
+        // Update index for this paragraph
+        for (const w of uniqueInPara) {
+          let arr = index.get(w);
+          if (!arr) { arr = []; index.set(w, arr); }
+          arr.push(i);
+        }
+      }
+
+      const entries = Object.entries(freq);
+      entries.sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
+
+      return {
+        freqMap: freq,
+        indexMap: index,
+        sortedAsc: entries,
+        totals: { tokens: tokenTotal, unique: entries.length }
+      };
+    }
+
+    // ------------------------------
+    // Rendering
+    // ------------------------------
+
+    function renderWordList() {
+      if (!sortedAsc) return;
+      // Clamp and normalize user inputs
+      let min = Math.max(1, toInt($minCount.value, 1));
+      let max = Math.max(min, toInt($maxCount.value, min));
+      const limit = Math.max(10, toInt($limit.value, 300));
+      $minCount.value = String(min);
+      $maxCount.value = String(max);
+      $limit.value = String(limit);
+
+      const order = $sort.value; // 'asc' or 'desc'
+      const source = order === 'asc' ? sortedAsc : [...sortedAsc].reverse();
+
+      // Filter by count range and take up to `limit` items
+      const picked = [];
+      for (const [w, c] of source) {
+        if (c < min || c > max) continue;
+        picked.push([w, c]);
+        if (picked.length >= limit) break;
+      }
+
+      // Render list
+      const frag = document.createDocumentFragment();
+      for (const [w, c] of picked) {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.className = 'word-btn';
+        btn.type = 'button';
+        btn.dataset.word = w;
+        const wSpan = document.createElement('span');
+        wSpan.className = 'w';
+        wSpan.textContent = w;
+        const cSpan = document.createElement('span');
+        cSpan.className = 'c';
+        cSpan.textContent = c;
+        btn.append(wSpan, cSpan);
+        li.append(btn);
+        frag.append(li);
+      }
+      $wordList.replaceChildren(frag);
+
+      // Reset context panel hint when re-rendering
+      $ctxTitle.textContent = 'Contexts';
+      $ctxMeta.textContent = picked.length ? '— click a word to see its paragraphs' : '— no words in this range';
+      $paragraphList.replaceChildren();
+    }
+
+    function showContexts(word) {
+      if (!indexMap || !freqMap) return;
+      const indices = indexMap.get(word) || [];
+      const totalCount = freqMap[word] || 0;
+
+      $ctxTitle.textContent = `“${word}”`;
+      $ctxMeta.textContent = `${indices.length} paragraph(s) · ${totalCount} occurrence(s)`;
+
+      // Limit the initial render to avoid flooding the DOM; expose a toggle to reveal more
+      const INITIAL_MAX = 150;
+      const list = document.createElement('ol');
+      list.className = 'paragraphs';
+
+      const renderSlice = (start, end) => {
+        for (let k = start; k < end; k++) {
+          const i = indices[k];
+          const para = paragraphs[i];
+          const li = document.createElement('li');
+          li.className = 'paragraph';
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          meta.textContent = `Paragraph #${i + 1}`;
+
+          const content = document.createElement('div');
+          content.className = 'content';
+          // Highlight the chosen word (case-insensitive, full-token match)
+          content.innerHTML = highlightWord(para, word);
+
+          li.append(meta, content);
+          list.append(li);
+        }
+      };
+
+      const countToRender = Math.min(indices.length, INITIAL_MAX);
+      renderSlice(0, countToRender);
+
+      $paragraphList.replaceChildren(list);
+
+      if (indices.length > countToRender) {
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'btn';
+        moreBtn.textContent = `Show all (${indices.length - countToRender} more)`;
+        moreBtn.addEventListener('click', () => {
+          renderSlice(countToRender, indices.length);
+          moreBtn.remove();
+        });
+        $paragraphList.append(moreBtn);
+      }
+    }
+
+    // ------------------------------
+    // Helpers
+    // ------------------------------
+
+    function updateStats() {
+      $statParas.textContent = `Paragraphs: ${paragraphs.length}`;
+      $statTokens.textContent = `Tokens: ${totals.tokens || 0}`;
+      $statUnique.textContent = `Unique: ${totals.unique || 0}`;
+    }
+
+    function setStatus(msg) { $status.textContent = msg; }
+
+    function resetUI() {
+      paragraphs = [];
+      freqMap = null; indexMap = null; sortedAsc = null; totals = { tokens: 0, unique: 0 };
+      $wordList.replaceChildren();
+      $paragraphList.replaceChildren();
+      $ctxTitle.textContent = 'Contexts';
+      $ctxMeta.textContent = '— pick a word from the list';
+      updateStats();
+    }
+
+    function toInt(v, d = 0) { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; }
+
+    function debounce(fn, wait = 150) {
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), wait); };
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    /**
+     * Highlight exact-token matches of `word` in `text` using <mark>.
+     * Uses the same WORD_RE definition to ensure consistent tokenization.
+     */
+    function highlightWord(text, word) {
+      const target = word.toLowerCase();
+      let out = '';
+      let last = 0;
+      const iter = text.matchAll(WORD_RE);
+      for (const m of iter) {
+        const start = m.index;
+        const end = start + m[0].length;
+        // Append the non-word segment before this token
+        out += escapeHtml(text.slice(last, start));
+        const token = m[0];
+        if (token.toLowerCase() === target) {
+          out += '<mark>' + escapeHtml(token) + '</mark>';
+        } else {
+          out += escapeHtml(token);
+        }
+        last = end;
+      }
+      // Append the rest of the string
+      out += escapeHtml(text.slice(last));
+      return out;
+    }
+  </script>
+</body>
+</html>
