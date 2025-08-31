@@ -44,7 +44,7 @@
     .field label { color: var(--muted); font-size: 12px; }
     .field input[type="number"], .field select {
       background: #0f1621; color: var(--text); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 10px; min-width: 90px; font-size: 13px;
+      border-radius: 8px; padding: 8px 10px; min-width: 10px; font-size: 13px;
     }
     .field input[type="file"] {
       background: transparent; color: var(--text);
@@ -60,7 +60,7 @@
     .grid {
       height: 100%;
       display: grid; gap: 14px;
-      grid-template-columns: 1fr 1.6fr;
+      grid-template-columns: 1fr 2.2fr;
     }
     @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; height: auto; } }
 
@@ -77,7 +77,7 @@
 
     .panel .body { padding: 12px; overflow: auto; flex: 1; }
 
-    .word-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+    .word-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
     .word-btn { width: 100%; text-align: left; background: #0f1621; border-radius: 0; border: none; border-bottom: 1px solid var(--border); padding: 4px 10px; display: grid; grid-template-columns: 1fr max-content; gap: 8px; align-items: center; }
     .word-btn .w { font-variant-ligatures: none; }
     .word-btn .c { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; }
@@ -127,7 +127,7 @@
         <div class="body" style="display:flex; flex-direction: column; gap: 12px;">
           <div class="filters">
             <div class="field">
-              <label for="minCount">Min count</label>
+              <label for="minCount">Min</label>
                 <select id="minCount">
                     <option selected>1</option>
                     <option>2</option>
@@ -139,11 +139,11 @@
                 </select>
             </div>
             <div class="field">
-              <label for="maxCount">Max count</label>
+              <label for="maxCount">Max</label>
               <input id="maxCount" type="number" value="10" min="1" step="1" />
             </div>
             <div class="field">
-              <label for="limit">Limit (rows)</label>
+              <label for="limit">Limit</label>
               <select id="limit">
                   <option>10</option>
                   <option selected>300</option>
@@ -154,8 +154,8 @@
             <div class="field">
               <label for="sort">Sort</label>
               <select id="sort">
-                <option value="asc">Rarest first (default)</option>
-                <option value="desc">Most frequent first</option>
+                <option value="asc">ASC</option>
+                <option value="desc">DESC</option>
               </select>
             </div>
           </div>
