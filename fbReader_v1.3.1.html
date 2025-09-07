@@ -324,9 +324,19 @@
         function buildFilename(idx) {
           return `tts_${state.bookTitle.replaceAll(' ', '_')}_p${idx}`;
         }
+        // Check if the MP3 file exists locally using <audio> element
+        async function checkMp3(file) {
+            return new Promise((resolve, reject) => {
+                const a = new Audio();
+                a.src = file;
+                a.addEventListener('canplaythrough', () => resolve(true), { once: true });
+                a.addEventListener('error', (e) => reject(e), { once: true });
+            })
+        }
 
         // ==== Rendering ====
         async function renderParagraphs(paras){
+          const startTime = performance.now();
           state.totalParas = paras.length;
           els.out.innerHTML = '';
           els.empty.innerHTML = `<span class="spinner"></span> Rendering ${paras.length} paragraphs…`;
@@ -391,6 +401,7 @@
             document.getElementById(`p-${lastPos}`).scrollIntoView({behavior:'smooth', block:'start'});
           }
           els.empty.classList.add('hidden');
+          console.log(`Rendered ${paras.length} paragraphs in ${(performance.now()-startTime).toFixed(2)}ms`);
         }
 
         // ==== Translation ====
@@ -456,25 +467,15 @@
           // try local file, if any
           const localAudioFile = buildFilename(idx) + `.mp3`;
 
-          try{
+          if (await checkMp3(localAudioFile)) {
               const audio = document.createElement('audio');
               audio.controls = true; audio.src = localAudioFile;
               audio.title = buildFilename(idx);
-              await new Promise((resolve, reject) => {
-                  audio.addEventListener('canplaythrough', () =>{
-                      console.log("can play through");
-                      resolve()
-                  }, { once: true });
-                  audio.addEventListener('error', (e) => {
-                      console.error("AAAA", e);
-                      reject(e)
-                  }, { once: true });
-              });
               await audio.play().catch(()=>{});
               holder.innerHTML = '';
               holder.appendChild(audio);
               return;
-          } catch(err){}
+          }
 
           holder.innerHTML = `<span class="spinner"></span><span class="muted"> Generating speech…</span>`;
           try{
