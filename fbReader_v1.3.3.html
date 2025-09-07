@@ -85,7 +85,7 @@
   <body>
     <header>
       <div class="bar">
-        <div class="title">📖 FB2 → Translator v1.3.2</div>
+        <div class="title">📖 FB2 → Translator</div>
 
         <label class="chip">
           <input id="fileInput" type="file" accept=".fb2,.xml" />
@@ -324,9 +324,52 @@
         function buildFilename(idx) {
           return `tts_${state.bookTitle.replaceAll(' ', '_')}_p${idx}`;
         }
+        // Check if the MP3 file exists locally using a single reusable <audio> probe to avoid creating many WebMediaPlayers
+        const _probeAudio = new Audio();
+        async function checkMp3(file){
+          // Serialize checks to reuse the same media player
+          return new Promise((resolve)=>{
+            const cleanup = ()=>{
+              _probeAudio.removeEventListener('canplaythrough', onOK);
+              _probeAudio.removeEventListener('error', onErr);
+              _probeAudio.removeAttribute('src');
+            };
+            const onOK = ()=>{ cleanup(); resolve(true); };
+            const onErr = ()=>{ cleanup(); resolve(false); };
+            _probeAudio.addEventListener('canplaythrough', onOK, {once:true});
+            _probeAudio.addEventListener('error', onErr, {once:true});
+            _probeAudio.src = file;
+          });
+        }
+
+        // After all paragraphs are rendered, try to attach local audio tags for those that exist
+        async function attachLocalAudioIfPresent(){
+          const startTime = performance.now();
+          const sections = Array.from(document.querySelectorAll('.para'));
+          for (const wrap of sections){
+            try{
+              const idx = parseInt(wrap.dataset.idx||'0',10); if(!idx) continue;
+              const holder = wrap.querySelector('.audio-holder'); if(!holder) continue;
+              // Skip if already has an audio element
+              if (holder.querySelector('audio')) continue;
+              const localAudioFile = buildFilename(idx) + `.mp3`;
+              try{
+                const exists = await checkMp3(localAudioFile);
+                if (exists){
+                  const audio = document.createElement('audio');
+                  audio.controls = true; audio.src = localAudioFile; audio.title = buildFilename(idx);
+                  holder.innerHTML = '';
+                  holder.appendChild(audio);
+                }
+              } catch(_){ /* ignore missing file */ }
+            } catch(e){ console.warn('attachLocalAudioIfPresent: error for para', wrap?.id, e); }
+          }
+          console.log(`Attached local audio in ${(performance.now()-startTime).toFixed(2)}ms`);
+        }
 
         // ==== Rendering ====
         async function renderParagraphs(paras){
+          const startTime = performance.now();
           state.totalParas = paras.length;
           els.out.innerHTML = '';
           els.empty.innerHTML = `<span class="spinner"></span> Rendering ${paras.length} paragraphs…`;
@@ -377,27 +420,6 @@
             wrap.appendChild(translation);
             els.out.appendChild(wrap);
 
-            // Always prepare audio tag (hidden initially) with expected local filename
-            const holder = wrap.querySelector('.audio-holder');
-            if (holder) {
-              holder.innerHTML = `<span class="audio-status muted"></span>`;
-              const audioEl = document.createElement('audio');
-              audioEl.className = 'para-audio hidden';
-              audioEl.preload = 'metadata';
-              audioEl.title = buildFilename(idx);
-              audioEl.src = buildFilename(idx) + '.mp3';
-              holder.appendChild(audioEl);
-              // Try to detect existing local file and reveal controls if playable
-              audioEl.addEventListener('canplaythrough', () => {
-                audioEl.classList.remove('hidden');
-                audioEl.controls = true;
-                const st = holder.querySelector('.audio-status');
-                if (st) st.textContent = '';
-              }, { once: true });
-              audioEl.addEventListener('error', () => { /* keep hidden if not found */ }, { once: true });
-              try { audioEl.load(); } catch(e) {}
-            }
-
             const cached = localStorage.getItem(getTransKey(state.fileHash, els.lang.value, idx));
             if (cached){ translation.innerHTML = `${escapeHtml(cached)}`; translation.classList.remove('hidden'); }
 
@@ -412,6 +434,12 @@
             document.getElementById(`p-${lastPos}`).scrollIntoView({behavior:'smooth', block:'start'});
           }
           els.empty.classList.add('hidden');
+          console.log(`Rendered ${paras.length} paragraphs in ${(performance.now()-startTime).toFixed(2)}ms`);
+
+          // After rendering all paragraphs, run a pass to attach local audio if present (v1.3.3 addition)
+          try {
+            await attachLocalAudioIfPresent();
+          } catch(e){ console.warn('Post-render local audio attach failed:', e); }
         }
 
         // ==== Translation ====
@@ -470,17 +498,24 @@
           const text = (()=>{ const d=document.createElement('div'); d.innerHTML=originalHtml; return (d.textContent||'').trim(); })();
           if(!text) return;
 
+          // UI target for audio
           const holder = wrap.querySelector('.audio-holder');
-          const status = holder?.querySelector('.audio-status');
-          const audio = holder?.querySelector('audio.para-audio');
+          holder.innerHTML = `<span class="spinner"></span><span class="muted"> Trying to load the local file…</span>`;
 
-          // If local file already playable (audio shown), just play it.
-          if (audio && !audio.classList.contains('hidden')){
-            try { await audio.play(); } catch(_) {}
-            return;
+          // try local file, if any
+          const localAudioFile = buildFilename(idx) + `.mp3`;
+
+          if (await checkMp3(localAudioFile)) {
+              const audio = document.createElement('audio');
+              audio.controls = true; audio.src = localAudioFile;
+              audio.title = buildFilename(idx);
+              await audio.play().catch(()=>{});
+              holder.innerHTML = '';
+              holder.appendChild(audio);
+              return;
           }
 
-          if (status) status.innerHTML = `<span class="spinner"></span><span class="muted"> Generating speech…</span>`;
+          holder.innerHTML = `<span class="spinner"></span><span class="muted"> Generating speech…</span>`;
           try{
             const model = els.ttsModel.value || 'gpt-4o-mini-tts';
             const voice = els.ttsVoice.value.trim() || 'alloy';
@@ -501,24 +536,16 @@
             const blob = new Blob([ab], { type: 'audio/mpeg' });
             const url = URL.createObjectURL(blob);
 
-            if (audio){
-              audio.src = url;
-              audio.controls = true;
-              audio.classList.remove('hidden');
-              if (status) status.textContent = '';
-              try { await audio.play(); } catch(_) {}
-            } else if (holder){
-              const a = document.createElement('audio');
-              a.className = 'para-audio';
-              a.controls = true;
-              a.src = url;
-              a.title = buildFilename(idx);
-              holder.appendChild(a);
-              if (status) status.textContent = '';
-              try { await a.play(); } catch(_) {}
-            }
+            const existing = holder.querySelector('audio');
+            if (existing) existing.remove();
+            const audio = document.createElement('audio');
+            audio.controls = true; audio.src = url;
+            audio.title = buildFilename(idx);
+            holder.innerHTML = '';
+            holder.appendChild(audio);
+            audio.play().catch(()=>{});
           } catch(err){
-            if (status) status.innerHTML = `<span style="color:var(--danger)">❗ ${escapeHtml(err.message || String(err))}</span>`;
+            holder.innerHTML = `<span style="color:var(--danger)">❗ ${escapeHtml(err.message || String(err))}</span>`;
           }
         }
 
