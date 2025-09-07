@@ -321,6 +321,9 @@
         function paragraphToHTML(pNode){
           return (Array.from(pNode.childNodes).map(sanitizeInline).join('').trim() || pNode.textContent.trim());
         }
+        function buildFilename(idx) {
+          return `tts_${state.bookTitle.replaceAll(' ', '_')}_p${idx}`;
+        }
 
         // ==== Rendering ====
         async function renderParagraphs(paras){
@@ -448,8 +451,32 @@
 
           // UI target for audio
           const holder = wrap.querySelector('.audio-holder');
-          holder.innerHTML = `<span class="spinner"></span><span class="muted"> Generating speech…</span>`;
+          holder.innerHTML = `<span class="spinner"></span><span class="muted"> Trying to load the local file…</span>`;
 
+          // try local file, if any
+          const localAudioFile = buildFilename(idx) + `.mp3`;
+
+          try{
+              const audio = document.createElement('audio');
+              audio.controls = true; audio.src = localAudioFile;
+              audio.title = buildFilename(idx);
+              await new Promise((resolve, reject) => {
+                  audio.addEventListener('canplaythrough', () =>{
+                      console.log("can play through");
+                      resolve()
+                  }, { once: true });
+                  audio.addEventListener('error', (e) => {
+                      console.error("AAAA", e);
+                      reject(e)
+                  }, { once: true });
+              });
+              await audio.play().catch(()=>{});
+              holder.innerHTML = '';
+              holder.appendChild(audio);
+              return;
+          } catch(err){}
+
+          holder.innerHTML = `<span class="spinner"></span><span class="muted"> Generating speech…</span>`;
           try{
             const model = els.ttsModel.value || 'gpt-4o-mini-tts';
             const voice = els.ttsVoice.value.trim() || 'alloy';
@@ -474,7 +501,7 @@
             if (existing) existing.remove();
             const audio = document.createElement('audio');
             audio.controls = true; audio.src = url;
-            audio.title = `tts ${state.bookTitle} p${idx}`;
+            audio.title = buildFilename(idx);
             holder.innerHTML = '';
             holder.appendChild(audio);
             audio.play().catch(()=>{});
