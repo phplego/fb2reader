@@ -561,11 +561,7 @@
 
         // ==== UI actions ====
         els.setKeyBtn.addEventListener('click', ()=>{
-          if (state.apiKey){
-            const wantRemove = confirm('Key already saved. Remove it?');
-            if (wantRemove){ removeApiKey(); alert('Key removed. Click again to enter a new one.'); }
-            else { ensureApiKey(true); }
-          } else { ensureApiKey(true); }
+            ensureApiKey(true);
         });
         els.saveKeyBtn.addEventListener('click', saveApiKey);
         els.closeKeyBtn.addEventListener('click', ()=> els.keyModal.classList.add('hidden'));
