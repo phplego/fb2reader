@@ -672,7 +672,7 @@
         document.addEventListener('keydown', (e)=>{ if(backdrop.classList.contains('pd-open') && e.key==='Escape') closeModal(); });
 
         const esc = s => String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
-        const split = txt => (txt||'').replace(/\s+/g,' ').trim().match(/[^.!?…]+[.!?…]*|\S+/g)||[];
+        const split = txt => (txt||'').replace(/\s+/g,' ').trim().split(/(?<=[.!?…]+)\s+(?=\S)/g)
 
         function buildDialogHTML(originalText, translatedHTML){
           const tmp = document.createElement('div'); tmp.innerHTML = translatedHTML;
