@@ -1,6 +1,8 @@
 
 FB2 Reader - Demo and Versions
 
+FB2 Reader is a single-file, client‑side web app for reading FB2 ebooks. It renders the book paragraph by paragraph, lets you translate any paragraph via OpenRouter, and can generate per‑paragraph text‑to‑speech (TTS) audio via OpenAI. All preferences and caches (including translations) are stored locally in your browser; no server backend is required.
+
 Live demos:
 - [fbReader_v1.1.html](fbReader_v1.1.html)
 - [fbReader_v1.2.html](fbReader_v1.2.html)
