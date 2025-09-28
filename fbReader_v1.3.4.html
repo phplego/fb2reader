@@ -416,10 +416,8 @@
           els.empty.classList.add('hidden');
           console.log(`Rendered ${paras.length} paragraphs in ${(performance.now()-startTime).toFixed(2)}ms`);
 
-          // After rendering all paragraphs, run a pass to attach local audio if present (v1.3.3 addition)
-          try {
-            //await attachLocalAudioIfPresent();
-          } catch(e){ console.warn('Post-render local audio attach failed:', e); }
+          // After rendering all paragraphs, run a pass to attach audio if present in the cache
+          // not implemented yet
         }
 
         // ==== Translation ====
