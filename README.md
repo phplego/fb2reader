@@ -7,6 +7,7 @@ Live demos:
 - [fbReader_v1.3.0.html](fbReader_v1.3.0.html)
 - [fbReader_v1.3.1.html](fbReader_v1.3.1.html)
 - [fbReader_v1.3.3.html](fbReader_v1.3.3.html)
+- [fbReader_v1.3.4.html](fbReader_v1.3.4.html)
 - [fbAnalyzer_v1.0.html](fbAnalyzer_v1.0.html)
 
 Summary of differences between versions:
@@ -29,6 +30,8 @@ Summary of differences between versions:
 - v1.3.3:
   - Improves local MP3 handling: auto-detects and attaches existing local audio files after rendering paragraphs using a reusable Audio probe (attachLocalAudioIfPresent).
   - Robustness fixes and small UX tweaks around audio playback and error handling.
+- v1.3.4:
+  - Add TTS Proxy support.
 
 Notes:
 - All versions use client-side localStorage; keys and cached translations never leave your browser except for API calls to the selected providers.
