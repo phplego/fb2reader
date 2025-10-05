@@ -4,12 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>FB2 Reader + Translate + TTS (OpenRouter + OpenAI)</title>
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      sizes="any"
-      href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjMDAwIi8+PGNpcmNsZSBjeD0iOCIgY3k9IjgiIHI9IjYiIGZpbGw9IiMwMGZmNDEiLz48L3N2Zz4="
-    />
+    <link rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='88'>📚</text></svg>">
     <style>
       :root {
         --bg: #0b0f14;
@@ -60,6 +56,9 @@
       .actions .hint{ opacity:.8; }
       .translation{ margin-top:.75rem; padding:.75rem .75rem; border-left:3px solid var(--accent); background:rgba(123,216,143,.08); border-radius:10px; }
       .translation em{ color:#d7ffe4; }
+      /* Prompt reveal */
+      .prompt{ margin-top:.6rem; padding:.6rem .7rem; border-left:3px solid var(--accent-2); background:rgba(93,169,255,.08); border-radius:10px; font-size:.85rem; white-space:pre-wrap; }
+      .prompt pre{ margin:.35rem 0; white-space:pre-wrap; }
       .muted{ color:var(--muted); }
       .badge{ background:#0f1520; border:1px solid var(--border); padding:.15rem .45rem; border-radius:8px; font-size:.78rem; }
       .hidden{ display:none !important; }
@@ -386,9 +385,15 @@
               <span class="muted">•</span>
               <a href="javascript:" class="force-translate muted">Translate</a>
               <span class="muted">•</span>
+              <a href="javascript:" class="show-prompt muted">Prompt</a>
+              <span class="muted">•</span>
               <a href="javascript:" class="speak-loud muted">🔊 TTS</a>
               <span class="audio-holder"></span>
             `;
+
+            const promptBox = document.createElement('div');
+            promptBox.className = 'prompt hidden';
+            promptBox.innerHTML = `<span class="muted">Prompt will appear here…</span>`;
 
             const translation = document.createElement('div');
             translation.className = 'translation hidden';
@@ -397,6 +402,7 @@
             wrap.appendChild(num);
             wrap.appendChild(original);
             wrap.appendChild(actions);
+            wrap.appendChild(promptBox);
             wrap.appendChild(translation);
             els.out.appendChild(wrap);
 
@@ -405,6 +411,7 @@
 
             wrap.addEventListener('click', async (ev)=>{
               if (ev.target.closest('a.force-translate')){ await onTranslateClick(wrap, html, idx); return; }
+              if (ev.target.closest('a.show-prompt')){ onPromptClick(wrap, html, idx); return; }
               if (ev.target.closest('a.speak-loud')){ await onSpeakClick(wrap, html, idx); return; }
               if (ev.target.closest('.original') && translation.classList.contains('hidden')){ await onTranslateClick(wrap, html, idx); }
             }, false);
@@ -443,12 +450,10 @@
             const model = (modelRaw || 'qwen/qwen3-235b-a22b-2507').replace(/\/+$/, '');
             localStorage.setItem(LS_MODEL, model);
 
+            const { system, user } = buildPrompt(idx, state.bookTitle, state.bookAuthor, lang, originalText);
             const messages = [
-              { role: 'system', content: `You are a precise translation engine. Translate the user's paragraph into ${lang}.
-- It is the paragraph #${idx} from the book "${state.bookTitle}" written by "${state.bookAuthor}".
-- Preserve meaning, tone and simple inline emphasis when obvious.
-- Do NOT add commentary. Return ONLY the translation text.` },
-              { role: 'user', content: originalText }
+              { role: 'system', content: system },
+              { role: 'user', content: user }
             ];
 
             let version = 'v0.0.0';
@@ -478,6 +483,19 @@
           } catch(err){
             transEl.innerHTML = `<span style="color:var(--danger)">❗ ${escapeHtml(err.message || String(err))}</span>`;
           } finally { delete wrap.dataset.status; }
+        }
+
+        // ==== Reveal Prompt button ====
+        function onPromptClick(wrap, originalHtml, idx){
+          const tmp = document.createElement('div'); tmp.innerHTML = originalHtml; const originalText = (tmp.textContent||'').trim();
+          const lang = els.lang.value;
+          const { system, user } = buildPrompt(idx, state.bookTitle, state.bookAuthor, lang, originalText);
+          const promptBox = wrap.querySelector('.prompt');
+          promptBox.innerHTML = `
+                  <div><span class="badge">system</span><pre>${escapeHtml(system)}</pre></div>
+                  <div><span class="badge">user</span><pre>${escapeHtml(user)}</pre></div>
+                `;
+          promptBox.classList.toggle('hidden');
         }
 
         // ==== Text-to-Speech (OpenAI) ====
@@ -595,6 +613,14 @@
         }
 
         // Helpers
+        function buildPrompt(idx, bookTitle, bookAuthor, lang, origText){
+          const system = `You are a precise translation engine. Translate the user's paragraph into ${lang}.
+- It is the paragraph #${idx} from the book "${bookTitle}" written by "${bookAuthor}".
+- Preserve meaning, tone and simple inline emphasis when obvious.
+- Do NOT add commentary. Return ONLY the translation text.`;
+          const user = (origText || '').trim();
+          return { system, user };
+        }
         function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
         // Init
@@ -659,8 +685,8 @@
           for(let i=0;i<n;i++){
             rows += `
   <section class="pd-row" data-idx="${i+1}">
-    <div class="pd-cell"><span class="pd-idx">${i+1}.</span><span lang="en">${esc(A[i]||'')}</span></div>
-    <div class="pd-cell"><span class="pd-idx">${i+1}.</span><span lang="ru">${esc(B[i]||'')}</span></div>
+    <div class="pd-cell"><span class="pd-idx">${i+1}.</span><span>${esc(A[i]||'')}</span></div>
+    <div class="pd-cell"><span class="pd-idx">${i+1}.</span><span>${esc(B[i]||'')}</span></div>
   </section>`;
           }
           return `
