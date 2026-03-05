@@ -3,14 +3,15 @@ FB2 Reader - Demo and Versions
 
 FB2 Reader is a single-file, client‑side web app for reading FB2 ebooks. It renders the book paragraph by paragraph, lets you translate any paragraph via OpenRouter, and can generate per‑paragraph text‑to‑speech (TTS) audio via OpenAI. All preferences and caches (including translations) are stored locally in your browser; no server backend is required.
 
+
 Live demos:
-- [fbReader_v1.1.html](fbReader_v1.1.html)
-- [fbReader_v1.2.html](fbReader_v1.2.html)
-- [fbReader_v1.3.0.html](fbReader_v1.3.0.html)
-- [fbReader_v1.3.1.html](fbReader_v1.3.1.html)
-- [fbReader_v1.3.3.html](fbReader_v1.3.3.html)
-- [fbReader_v1.3.4.html](fbReader_v1.3.4.html)
-- [fbAnalyzer_v1.0.html](fbAnalyzer_v1.0.html)
+- [fbReader_v1.1.html](https://phplego.github.io/fb2reader/fbReader_v1.1.html)
+- [fbReader_v1.2.html](https://phplego.github.io/fb2reader/fbReader_v1.2.html)
+- [fbReader_v1.3.0.html](https://phplego.github.io/fb2reader/fbReader_v1.3.0.html)
+- [fbReader_v1.3.1.html](https://phplego.github.io/fb2reader/fbReader_v1.3.1.html)
+- [fbReader_v1.3.3.html](https://phplego.github.io/fb2reader/fbReader_v1.3.3.html)
+- [fbReader_v1.3.4.html](https://phplego.github.io/fb2reader/fbReader_v1.3.4.html)
+- [fbAnalyzer_v1.0.html](https://phplego.github.io/fb2reader/fbAnalyzer_v1.0.html)
 
 Summary of differences between versions:
 - v1.1:
