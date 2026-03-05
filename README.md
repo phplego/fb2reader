@@ -11,6 +11,8 @@ Live demos:
 - [fbReader_v1.3.1.html](https://phplego.github.io/fb2reader/fbReader_v1.3.1.html)
 - [fbReader_v1.3.3.html](https://phplego.github.io/fb2reader/fbReader_v1.3.3.html)
 - [fbReader_v1.3.4.html](https://phplego.github.io/fb2reader/fbReader_v1.3.4.html)
+
+Word Frequency Analyzer:
 - [fbAnalyzer_v1.0.html](https://phplego.github.io/fb2reader/fbAnalyzer_v1.0.html)
 
 Summary of differences between versions:
